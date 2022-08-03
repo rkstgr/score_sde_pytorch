@@ -22,16 +22,20 @@ import os
 import time
 
 import numpy as np
+import soundfile
 import tensorflow as tf
 import tensorflow_gan as tfgan
 import logging
 # Keep the import below for registering all model definitions
+from einops import rearrange
+
+from audio.util import load_normalizers, invert_normalization, invert_spectrogram
 from models import ddpm, ncsnv2, ncsnpp
 import losses
 import sampling
 from models import utils as mutils
 from models.ema import ExponentialMovingAverage
-import datasets
+import dataset
 import evaluation
 import likelihood
 import sde_lib
@@ -42,7 +46,6 @@ from torchvision.utils import make_grid, save_image
 from utils import save_checkpoint, restore_checkpoint
 
 FLAGS = flags.FLAGS
-
 
 def train(config, workdir):
   """Runs the training pipeline.
@@ -78,13 +81,13 @@ def train(config, workdir):
   initial_step = int(state['step'])
 
   # Build data iterators
-  train_ds, eval_ds, _ = datasets.get_dataset(config,
-                                              uniform_dequantization=config.data.uniform_dequantization)
+  train_ds, eval_ds, _ = dataset.get_dataset(config,
+                                             uniform_dequantization=config.data.uniform_dequantization)
   train_iter = iter(train_ds)  # pytype: disable=wrong-arg-types
   eval_iter = iter(eval_ds)  # pytype: disable=wrong-arg-types
   # Create data normalizer and its inverse
-  scaler = datasets.get_data_scaler(config)
-  inverse_scaler = datasets.get_data_inverse_scaler(config)
+  scaler = dataset.get_data_scaler(config)
+  inverse_scaler = dataset.get_data_inverse_scaler(config)
 
   # Setup SDEs
   if config.training.sde.lower() == 'vpsde':
@@ -160,16 +163,32 @@ def train(config, workdir):
         ema.restore(score_model.parameters())
         this_sample_dir = os.path.join(sample_dir, "iter_{}".format(step))
         tf.io.gfile.makedirs(this_sample_dir)
-        nrow = int(np.sqrt(sample.shape[0]))
-        image_grid = make_grid(sample, nrow, padding=2)
-        sample = np.clip(sample.permute(0, 2, 3, 1).cpu().numpy() * 255, 0, 255).astype(np.uint8)
-        with tf.io.gfile.GFile(
-            os.path.join(this_sample_dir, "sample.np"), "wb") as fout:
-          np.save(fout, sample)
 
-        with tf.io.gfile.GFile(
-            os.path.join(this_sample_dir, "sample.png"), "wb") as fout:
-          save_image(image_grid, fout)
+        if config.data.dataset == "MTG":
+            normalizers = load_normalizers(config.data.normalizers_path)
+            sample = invert_normalization(sample, normalizers=normalizers)
+            sample = invert_spectrogram(sample,
+                                        n_fft=config.data.n_fft,
+                                        hop_length=config.data.hop_length)
+            sample = rearrange(sample, "b t -> (b t)")
+            with tf.io.gfile.GFile(os.path.join(this_sample_dir, "sample.np"), "wb") as fout:
+                np.save(fout, sample)
+
+            with tf.io.gfile.GFile(
+                    os.path.join(this_sample_dir, "sample.wav"), "wb") as fout:
+                soundfile.write(fout, sample, samplerate=config.data.sampling_rate)
+
+        else:
+            nrow = int(np.sqrt(sample.shape[0]))
+            image_grid = make_grid(sample, nrow, padding=2)
+            sample = np.clip(sample.permute(0, 2, 3, 1).cpu().numpy() * 255, 0, 255).astype(np.uint8)
+            with tf.io.gfile.GFile(
+                os.path.join(this_sample_dir, "sample.np"), "wb") as fout:
+              np.save(fout, sample)
+
+            with tf.io.gfile.GFile(
+                os.path.join(this_sample_dir, "sample.png"), "wb") as fout:
+              save_image(image_grid, fout)
 
 
 def evaluate(config,
@@ -188,13 +207,13 @@ def evaluate(config,
   tf.io.gfile.makedirs(eval_dir)
 
   # Build data pipeline
-  train_ds, eval_ds, _ = datasets.get_dataset(config,
+  train_ds, eval_ds, _ = dataset.get_dataset(config,
                                               uniform_dequantization=config.data.uniform_dequantization,
                                               evaluation=True)
 
   # Create data normalizer and its inverse
-  scaler = datasets.get_data_scaler(config)
-  inverse_scaler = datasets.get_data_inverse_scaler(config)
+  scaler = dataset.get_data_scaler(config)
+  inverse_scaler = dataset.get_data_inverse_scaler(config)
 
   # Initialize model
   score_model = mutils.create_model(config)
@@ -231,7 +250,7 @@ def evaluate(config,
 
 
   # Create data loaders for likelihood evaluation. Only evaluate on uniformly dequantized data
-  train_ds_bpd, eval_ds_bpd, _ = datasets.get_dataset(config,
+  train_ds_bpd, eval_ds_bpd, _ = dataset.get_dataset(config,
                                                       uniform_dequantization=True, evaluation=True)
   if config.eval.bpd_dataset.lower() == 'train':
     ds_bpd = train_ds_bpd

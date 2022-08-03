@@ -1,5 +1,6 @@
 ml-collections==0.1.0
 tensorflow-gan==2.0.0
+tensorflow_probability==0.12.2
 tensorflow_io
 tensorflow_datasets==3.1.0
 tensorflow==2.4.0
@@ -9,3 +10,9 @@ absl-py==0.10.0
 torch>=1.7.0
 torchvision
 ninja
+einops==0.4.1
+pyfunctional==1.4.3
+scipy==1.9
+librosa==0.9.2
+numpy
+datasets[audio]
