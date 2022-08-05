@@ -1,13 +1,14 @@
 import os
 
 import ml_collections
+import torch
 
 
 def get_default_configs():
     config = ml_collections.ConfigDict()
     # training
     config.training = training = ml_collections.ConfigDict()
-    config.training.batch_size = 2
+    config.training.batch_size = 8
     training.n_iters = 1300001
     training.snapshot_freq = 50000
     training.log_freq = 50
@@ -75,5 +76,6 @@ def get_default_configs():
     optim.grad_clip = 1.
 
     config.seed = 42
+    config.device = torch.device('cuda:0') if torch.cuda.is_available() else torch.device('cpu')
 
     return config

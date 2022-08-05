@@ -15,6 +15,7 @@
 
 """Training and evaluation"""
 
+import torch
 import run_lib
 from absl import app
 from absl import flags
