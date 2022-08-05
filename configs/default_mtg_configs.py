@@ -1,3 +1,5 @@
+import os
+
 import ml_collections
 
 
@@ -40,9 +42,7 @@ def get_default_configs():
     # data
     config.data = data = ml_collections.ConfigDict()
     data.dataset = 'MTG'
-    data.dataset_path = "/Volumes/Black T5/dataset/mtg-jamendo/mtg_jamendo.py"
-    data.cache_dir = "/Volumes/Black T5/dataset/huggingface_cache"
-    data.normalizers_path = "/Users/erik/Dev/projects/score_sde/audio/audio_normalizers.pckl"
+    data.normalizers_path = "audio/audio_normalizers.pckl"
     data.num_proc = 4
     data.n_fft = 1024
     data.hop_length = 431

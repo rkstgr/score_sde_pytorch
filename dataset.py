@@ -15,7 +15,9 @@
 
 # pylint: skip-file
 """Return training and evaluation/test datasets from config files."""
+import os
 from functools import partial
+from pathlib import Path
 
 import datasets
 import tensorflow as tf
@@ -150,7 +152,7 @@ def get_dataset(config, uniform_dequantization=False, evaluation=False):
 
     elif config.data.dataset == "MTG":
 
-        normalizers = load_normalizers(config.data.normalizers_path)
+        normalizers = load_normalizers(Path(__file__).parent.parent.joinpath(config.data.normalizers_path))
 
         def prepare_dataset(ds: tf.data.Dataset) -> datasets.Dataset:
             ds = ds.repeat(count=num_epochs)
@@ -159,6 +161,7 @@ def get_dataset(config, uniform_dequantization=False, evaluation=False):
             return ds.prefetch(prefetch_size)
 
         mtg_dataset = partial(get_mtg_dataset,
+                              path=os.environ.get("MTG_DATASET_PATH"),
                               sampling_rate=config.data.sampling_rate,
                               duration=config.data.duration,
                               n_fft=config.data.n_fft,
