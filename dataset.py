@@ -156,7 +156,7 @@ def get_dataset(config, uniform_dequantization=False, evaluation=False):
 
         def prepare_dataset(ds: tf.data.Dataset):
             ds = ds.repeat(count=num_epochs)
-            ds = ds.shuffle(shuffle_buffer_size)
+            ds = ds.shuffle(100)
             ds = ds.batch(batch_size, drop_remainder=True)
             return ds.prefetch(prefetch_size)
 

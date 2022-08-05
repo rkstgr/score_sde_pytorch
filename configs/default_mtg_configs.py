@@ -8,13 +8,13 @@ def get_default_configs():
     config = ml_collections.ConfigDict()
     # training
     config.training = training = ml_collections.ConfigDict()
-    config.training.batch_size = 8
-    training.n_iters = 1300001
-    training.snapshot_freq = 50000
+    config.training.batch_size = 1
+    training.n_iters = 1_300_001
+    training.snapshot_freq = 50_000
     training.log_freq = 50
     training.eval_freq = 100
     ## store additional checkpoints for preemption in cloud computing environments
-    training.snapshot_freq_for_preemption = 10000
+    training.snapshot_freq_for_preemption = 10_000
     ## produce samples at each snapshot.
     training.snapshot_sampling = True
     training.likelihood_weighting = False
@@ -35,7 +35,7 @@ def get_default_configs():
     evaluate.end_ckpt = 26
     evaluate.batch_size = 64
     evaluate.enable_sampling = False
-    evaluate.num_samples = 50000
+    evaluate.num_samples = 50_000
     evaluate.enable_loss = True
     evaluate.enable_bpd = False
     evaluate.bpd_dataset = 'test'
@@ -43,15 +43,14 @@ def get_default_configs():
     # data
     config.data = data = ml_collections.ConfigDict()
     data.dataset = 'MTG'
+    data.genre = "lofi"  # set to None for all
     data.normalizers_path = "audio/audio_normalizers.pickel"
     data.num_proc = 4
     data.n_fft = 1024
     data.hop_length = 431
     data.duration = 10
     data.sampling_rate = 22050
-    data.genre = 'lofi'
     data.uniform_dequantization = False
-    data.processing_batch_size = 8
     data.image_size = 512
     data.num_channels = 2
 
