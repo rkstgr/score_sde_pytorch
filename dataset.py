@@ -168,7 +168,7 @@ def get_dataset(config, uniform_dequantization=False, evaluation=False):
                               hop_length=config.data.hop_length,
                               normalizers=normalizers
                               )
-
+        print("Loading MTG dataset")
         train_ds = prepare_dataset(mtg_dataset("train"))
         valid_ds = prepare_dataset(mtg_dataset("valid"))
 
