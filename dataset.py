@@ -17,13 +17,13 @@
 """Return training and evaluation/test datasets from config files."""
 from functools import partial
 
+import datasets
 import tensorflow as tf
 import tensorflow_datasets as tfds
 import torch
 
 from audio.mtg import get_mtg_dataset
-from audio.util import *
-import datasets
+from audio.util import load_normalizers
 
 
 def get_data_scaler(config):
