@@ -23,7 +23,7 @@ def generator_fn(mtg_root_path: Path, split: str, sampling_rate, duration, n_fft
         hop_length: The number of samples between each window.
         normalizers: Dictionary with real and imag normalizers to use for the spectrograms.
     """
-    tracks_file = mtg_root_path.joinpath(f"{split}.tsv")
+    tracks_file = Path(mtg_root_path).joinpath(f"{split}.tsv")
     tracks = pd.read_csv(tracks_file, sep="\t")
 
     def generator():

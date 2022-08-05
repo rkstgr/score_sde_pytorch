@@ -43,7 +43,7 @@ def get_default_configs():
     # data
     config.data = data = ml_collections.ConfigDict()
     data.dataset = 'MTG'
-    data.normalizers_path = "audio/audio_normalizers.pckl"
+    data.normalizers_path = "audio/audio_normalizers.pickel"
     data.num_proc = 4
     data.n_fft = 1024
     data.hop_length = 431
