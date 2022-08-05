@@ -154,7 +154,7 @@ def get_dataset(config, uniform_dequantization=False, evaluation=False):
 
         normalizers = load_normalizers(Path(__file__).parent.joinpath(config.data.normalizers_path))
 
-        def prepare_dataset(ds: tf.data.Dataset) -> datasets.Dataset:
+        def prepare_dataset(ds: tf.data.Dataset):
             ds = ds.repeat(count=num_epochs)
             ds = ds.shuffle(shuffle_buffer_size)
             ds = ds.batch(batch_size, drop_remainder=True)

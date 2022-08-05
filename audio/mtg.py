@@ -1,6 +1,7 @@
 from functools import partial
 from pathlib import Path
 
+import os
 import librosa
 import numpy as np
 import pandas as pd
@@ -28,8 +29,9 @@ def generator_fn(mtg_root_path: Path, split: str, sampling_rate, duration, n_fft
 
     def generator():
         for i, track in tracks.iterrows():
-            audio_path = mtg_root_path.joinpath(f"opus/{split}/{track.chunk_nr}/{track.id}.opus")
+            audio_path = mtg_root_path.joinpath(f"opus/{track.id}.opus")
             if not audio_path.exists():
+                print("Skipping", audio_path, "(not found)")
                 continue
             audio_array = librosa.load(audio_path, sr=sampling_rate, duration=duration + 10)[0]
             audio_array = librosa.effects.trim(audio_array)[0]
@@ -84,10 +86,30 @@ def get_mtg_dataset(path, split, sampling_rate, duration, n_fft, hop_length, nor
 
 
 if __name__ == '__main__':
-    audio_normalizers = load_normalizers(Path(__file__).parent.joinpath("audio_normalizers.pickel"))
-    ds = get_mtg_dataset(Path("/Volumes/Black T5/dataset/mtg-jamendo"), "train", sampling_rate=44100, duration=10, n_fft=1024, hop_length=512, normalizers=audio_normalizers)
 
-    ds = ds.batch(8, drop_remainder=True)
-    for element in ds.as_numpy_iterator():
-        print(element["label"].shape, element["image"].shape)
+    normalizers = load_normalizers(Path(__file__).parent.joinpath("audio_normalizers.pickel"))
+    num_epochs = None
+    shuffle_buffer_size = 10000
+    batch_size = 8
+    prefetch_size = tf.data.AUTOTUNE
+    def prepare_dataset(ds: tf.data.Dataset):
+        ds = ds.repeat(count=num_epochs)
+        ds = ds.shuffle(shuffle_buffer_size)
+        ds = ds.batch(batch_size, drop_remainder=True)
+        return ds.prefetch(prefetch_size)
+
+    mtg_dataset = partial(get_mtg_dataset,
+                            path=Path(os.environ.get("MTG_DATASET_PATH")),
+                            sampling_rate=22050,
+                            duration=10,
+                            n_fft=1024,
+                            hop_length=431,
+                            normalizers=normalizers
+                            )
+    print("Loading MTG dataset")
+    train_ds = prepare_dataset(mtg_dataset(split="train"))
+
+    print(train_ds)
+    for el in iter(train_ds):
+        print(el)
         break
