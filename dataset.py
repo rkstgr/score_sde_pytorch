@@ -15,9 +15,15 @@
 
 # pylint: skip-file
 """Return training and evaluation/test datasets from config files."""
+from functools import partial
+
 import tensorflow as tf
 import tensorflow_datasets as tfds
 import torch
+
+from audio.mtg import get_mtg_dataset
+from audio.util import *
+import datasets
 
 
 def get_data_scaler(config):
@@ -142,72 +148,28 @@ def get_dataset(config, uniform_dequantization=False, evaluation=False):
         dataset_builder = tf.data.TFRecordDataset(config.data.tfrecords_path)
         train_split_name = eval_split_name = 'train'
 
-
     elif config.data.dataset == "MTG":
 
         normalizers = load_normalizers(config.data.normalizers_path)
 
-        def prepare_dataset(ds: datasets.Dataset, batch_size: int) -> datasets.Dataset:
-
-            sr = config.data.sampling_rate
-            n_fft = config.data.n_fft
-            hop_length = config.data.hop_length
-            duration = config.data.duration
-            time_bins = int(np.ceil(sr * duration / hop_length))
-
-            map_params = dict(
-                batched=True,
-                batch_size=config.data.processing_batch_size,
-                num_proc=config.data.num_proc
-            )
-
-            def preprocess_fn(d):
-                """Basic preprocessing function scales data to [0, 1) and randomly flips."""
-                img = d['image']
-                if uniform_dequantization:
-                    img = (tf.random.uniform(img.shape, dtype=tf.float32) + img * 255.) / 256.
-
-                return dict(image=img, label=d.get('label', None))
-
-            hf_ds = (ds
-                     .filter(partial(filter_func, genre=config.data.genre), **map_params)
-                     .cast_column("audio", datasets.Audio(sampling_rate=sr, decode=False))
-                     .map(partial(load_audio, sampling_rate=sr, remove_silence=True, duration=duration),
-                          **map_params)
-                     .map(partial(create_spectrogram, n_fft=n_fft, hop_length=hop_length),
-                          **map_params)
-                     .map(crop_spectrogram,
-                          **map_params)
-                     .map(partial(normalize_spectrogram, normalizers=normalizers),
-                          **map_params)
-                     .cast_column("audio_spectrogram",
-                                  datasets.Array3D((n_fft // 2, time_bins, config.data.num_channels), "float32"))
-                     .rename_column("audio_spectrogram", "image")
-                     )
-            ds = hf_ds.to_tf_dataset(batch_size=per_device_batch_size, columns=["id", "image"],
-                                     drop_remainder=True)
+        def prepare_dataset(ds: tf.data.Dataset) -> datasets.Dataset:
             ds = ds.repeat(count=num_epochs)
             ds = ds.shuffle(shuffle_buffer_size)
-            ds = ds.map(preprocess_fn, num_parallel_calls=tf.data.experimental.AUTOTUNE)
-            for bs in reversed(batch_dims[:-1]):
-                ds = ds.batch(bs, drop_remainder=True)
+            ds = ds.batch(batch_size, drop_remainder=True)
             return ds.prefetch(prefetch_size)
 
-        train_hf = datasets.load_dataset(path=config.data.dataset_path,
-                                         cache_dir=config.data.cache_dir,
-                                         split=datasets.Split.TRAIN,
-                                         ignore_verifications=True)
+        mtg_dataset = partial(get_mtg_dataset,
+                              sampling_rate=config.data.sampling_rate,
+                              duration=config.data.duration,
+                              n_fft=config.data.n_fft,
+                              hop_length=config.data.hop_length,
+                              normalizers=normalizers
+                              )
 
-        valid_hf = datasets.load_dataset(path=config.data.dataset_path,
-                                         cache_dir=config.data.cache_dir,
-                                         split=datasets.Split.VALIDATION,
-                                         ignore_verifications=True)
-
-        train_ds = prepare_dataset(train_hf, batch_size)
-        valid_ds = prepare_dataset(valid_hf, batch_size)
+        train_ds = prepare_dataset(mtg_dataset("train"))
+        valid_ds = prepare_dataset(mtg_dataset("valid"))
 
         return train_ds, valid_ds, None
-
 
     else:
         raise NotImplementedError(
