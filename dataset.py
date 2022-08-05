@@ -162,6 +162,7 @@ def get_dataset(config, uniform_dequantization=False, evaluation=False):
 
         mtg_dataset = partial(get_mtg_dataset,
                               path=Path(os.environ.get("MTG_DATASET_PATH")),
+                              genre=config.data.get("genre", None),
                               sampling_rate=config.data.sampling_rate,
                               duration=config.data.duration,
                               n_fft=config.data.n_fft,

@@ -5,13 +5,14 @@ import os
 import librosa
 import numpy as np
 import pandas as pd
+import soundfile
 import tensorflow as tf
 from einops import rearrange
 
 from audio.util import load_normalizers
 
 
-def generator_fn(mtg_root_path: Path, split: str, sampling_rate, duration, n_fft, hop_length, normalizers):
+def generator_fn(mtg_root_path: Path, split: str, sampling_rate, duration, n_fft, hop_length, normalizers, genre=None):
     """
     Generates a dataset of spectrograms from the MTG dataset.
 
@@ -23,9 +24,14 @@ def generator_fn(mtg_root_path: Path, split: str, sampling_rate, duration, n_fft
         n_fft: The length of the window signal for the fourier transformation.
         hop_length: The number of samples between each window.
         normalizers: Dictionary with real and imag normalizers to use for the spectrograms.
+        genre: Will return only tracks that have this genre under genres
     """
     tracks_file = Path(mtg_root_path).joinpath(f"{split}.tsv")
     tracks = pd.read_csv(tracks_file, sep="\t")
+    print(f"Found {len(tracks)} tracks in {tracks_file}")
+    if genre is not None:
+        tracks = tracks[tracks["genres"].apply(lambda gs: genre in eval(gs))]
+        print(f"Filtering on genre '{genre}'. {len(tracks)} tracks left.")
 
     def generator():
         for i, track in tracks.iterrows():
@@ -64,7 +70,7 @@ def normalize(X, normalizers):
     return X
 
 
-def get_mtg_dataset(path, split, sampling_rate, duration, n_fft, hop_length, normalizers) -> tf.data.Dataset:
+def get_mtg_dataset(path, split, sampling_rate, duration, n_fft, hop_length, normalizers, genre: str=None) -> tf.data.Dataset:
     """
     Returns a dataset of spectrograms from the MTG dataset.
 
@@ -78,7 +84,7 @@ def get_mtg_dataset(path, split, sampling_rate, duration, n_fft, hop_length, nor
         normalizers: Dictionary with real and imag normalizers to use for the spectrograms.
     """
     time_bins = int(np.ceil((duration * sampling_rate) / hop_length))
-    return tf.data.Dataset.from_generator(generator_fn(path, split ,sampling_rate, duration, n_fft, hop_length, normalizers),
+    return tf.data.Dataset.from_generator(generator_fn(path, split ,sampling_rate, duration, n_fft, hop_length, normalizers, genre=genre),
                                           output_signature={
                                               "label": tf.TensorSpec(shape=[], dtype=tf.int32),
                                               "image": tf.TensorSpec(shape=[n_fft // 2, time_bins, 2])
@@ -89,9 +95,10 @@ if __name__ == '__main__':
 
     normalizers = load_normalizers(Path(__file__).parent.joinpath("audio_normalizers.pickel"))
     num_epochs = None
-    shuffle_buffer_size = 10000
+    shuffle_buffer_size = 50
     batch_size = 8
     prefetch_size = tf.data.AUTOTUNE
+
     def prepare_dataset(ds: tf.data.Dataset):
         ds = ds.repeat(count=num_epochs)
         ds = ds.shuffle(shuffle_buffer_size)
@@ -100,6 +107,7 @@ if __name__ == '__main__':
 
     mtg_dataset = partial(get_mtg_dataset,
                             path=Path(os.environ.get("MTG_DATASET_PATH")),
+                            genre="lofi",
                             sampling_rate=22050,
                             duration=10,
                             n_fft=1024,
