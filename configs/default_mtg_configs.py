@@ -1,3 +1,4 @@
+import math
 import os
 
 import ml_collections
@@ -8,9 +9,9 @@ def get_default_configs():
     config = ml_collections.ConfigDict()
     # training
     config.training = training = ml_collections.ConfigDict()
-    config.training.batch_size = 1
-    training.n_iters = 1_300_001
-    training.snapshot_freq = 50_000
+    config.training.batch_size = 4
+    training.n_iters = 300_001
+    training.snapshot_freq = 5_000
     training.log_freq = 50
     training.eval_freq = 100
     ## store additional checkpoints for preemption in cloud computing environments
@@ -43,16 +44,17 @@ def get_default_configs():
     # data
     config.data = data = ml_collections.ConfigDict()
     data.dataset = 'MTG'
-    data.genre = "lofi"  # set to None for all
+    data.genre = "classical"  # set to None for all
     data.normalizers_path = "audio/audio_normalizers.pickel"
     data.num_proc = 4
-    data.n_fft = 1024
-    data.hop_length = 431
-    data.duration = 10
-    data.sampling_rate = 22050
+    data.n_fft = 512
+    data.hop_length = 256
+    data.duration = 6
+    data.sampling_rate = 16_380
     data.uniform_dequantization = False
-    data.image_size = 512
+    data.image_size = 256
     data.num_channels = 2
+    data.time_bins = int(math.ceil(data.duration*data.sampling_rate/data.hop_length))
 
     # model
     config.model = model = ml_collections.ConfigDict()
@@ -68,7 +70,7 @@ def get_default_configs():
     config.optim = optim = ml_collections.ConfigDict()
     optim.weight_decay = 0
     optim.optimizer = 'Adam'
-    optim.lr = 2e-4
+    optim.lr = 8e-5
     optim.beta1 = 0.9
     optim.eps = 1e-8
     optim.warmup = 5000

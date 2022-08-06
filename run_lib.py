@@ -116,8 +116,12 @@ def train(config, workdir):
 
   # Building sampling functions
   if config.training.snapshot_sampling:
-    sampling_shape = (config.training.batch_size, config.data.num_channels,
-                      config.data.image_size, config.data.image_size)
+    if config.data.dataset == "MTG":
+      sampling_shape = (config.training.batch_size, config.data.num_channels,
+                        config.data.n_fft//2, config.data.time_bins)
+    else:
+      sampling_shape = (config.training.batch_size, config.data.num_channels,
+                        config.data.image_size, config.data.image_size)
     sampling_fn = sampling.get_sampling_fn(config, sde, sampling_shape, inverse_scaler, sampling_eps)
 
   num_train_steps = config.training.n_iters
@@ -268,9 +272,12 @@ def evaluate(config,
 
   # Build the sampling function when sampling is enabled
   if config.eval.enable_sampling:
-    sampling_shape = (config.eval.batch_size,
-                      config.data.num_channels,
-                      config.data.image_size, config.data.image_size)
+    if config.data.dataset == "MTG":
+      sampling_shape = (config.training.batch_size, config.data.num_channels,
+                        config.data.n_fft//2, config.data.time_bins)
+    else:
+      sampling_shape = (config.training.batch_size, config.data.num_channels,
+                        config.data.image_size, config.data.image_size)
     sampling_fn = sampling.get_sampling_fn(config, sde, sampling_shape, inverse_scaler, sampling_eps)
 
   # Use inceptionV3 for images with resolution higher than 256.
