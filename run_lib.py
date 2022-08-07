@@ -176,14 +176,12 @@ def train(config, workdir):
 
         if config.data.dataset == "MTG":
             inverse_transformation = InverseSamples(config)
-            audio_wave = inverse_transformation(sample)
-            audio_wave = rearrange(audio_wave, "b t -> (b t)").cpu().numpy()
+            audio_wave = inverse_transformation(sample.permute(0, 2, 3, 1).cpu())
+            audio_wave = rearrange(audio_wave, "b t -> (b t)")
             with tf.io.gfile.GFile(os.path.join(this_sample_dir, "sample.np"), "wb") as fout:
-                np.save(fout, audio_wave)
+                np.save(fout, audio_wave.numpy())
 
-            with tf.io.gfile.GFile(
-                    os.path.join(this_sample_dir, "sample.wav"), "wb") as fout:
-                torchaudio.save(fout, audio_wave, sr=config.data.sampling_rate)
+            torchaudio.save(os.path.join(this_sample_dir, f"sample.mp3"), torch.unsqueeze(audio_wave, 0).float(), sample_rate=config.data.sampling_rate)
 
         else:
             nrow = int(np.sqrt(sample.shape[0]))

@@ -129,10 +129,10 @@ class InverseNormalizeRealImag(torch.nn.Module):
         self.normalizers = normalizers
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = torch.stack([x, torch.zeros(x.shape[0], 1, x.shape[2])], dim=1)
-        re = rearrange(self.normalizers["real"].inverse_transform(rearrange(x.real, "f t -> t f")), "t f -> f t")
-        im = rearrange(self.normalizers["imag"].inverse_transform(rearrange(x.imag, "f t -> t f")), "t f -> f t")
-        return re + 1j * im
+        x = torch.cat([x, torch.zeros(x.shape[0], 1, x.shape[2], x.shape[3])], dim=1)
+        re = rearrange(self.normalizers["real"].inverse_transform(rearrange(x[:, :, :, 0], "n f t -> (n t) f")), "(n t) f -> n f t", n=x.shape[0])
+        im = rearrange(self.normalizers["imag"].inverse_transform(rearrange(x[:, :, :, 1], "n f t -> (n t) f")), "(n t) f -> n f t", n=x.shape[0])
+        return torch.from_numpy(re + 1j * im)
 
 
 class InverseSamples(torch.nn.Module):
