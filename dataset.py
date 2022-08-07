@@ -24,7 +24,6 @@ import tensorflow_datasets as tfds
 import torch
 
 from audio.mtg import get_mtg_dataset
-from audio.util import load_normalizers
 
 
 def get_data_scaler(config):
