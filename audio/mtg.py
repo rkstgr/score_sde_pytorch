@@ -153,7 +153,7 @@ def get_mtg_dataset(split, config):
     normalizers = load_normalizers(Path(__file__).parent / "audio_normalizers.pickel")
     return MtgOpusDataset(
         track_file=Path(os.environ["MTG_DATASET_PATH"]) / f"{split}.tsv",
-        opus_dir=os.environ["MTG_DATASET_PATH"] / "opus",
+        opus_dir=Path(os.environ["MTG_DATASET_PATH"]) / "opus",
         genres=config.data.genres,
         sampling_rate=config.data.sampling_rate,
         duration=config.data.duration,
