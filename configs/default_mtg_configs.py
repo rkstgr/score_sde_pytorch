@@ -11,11 +11,11 @@ def get_default_configs():
     config.training = training = ml_collections.ConfigDict()
     config.training.batch_size = 4
     training.n_iters = 300_001
-    training.snapshot_freq = 5_000
-    training.log_freq = 50
+    training.snapshot_freq = 1000
+    training.log_freq = 10
     training.eval_freq = 100
     ## store additional checkpoints for preemption in cloud computing environments
-    training.snapshot_freq_for_preemption = 10_000
+    training.snapshot_freq_for_preemption = 500
     ## produce samples at each snapshot.
     training.snapshot_sampling = True
     training.likelihood_weighting = False
@@ -45,7 +45,7 @@ def get_default_configs():
     config.data = data = ml_collections.ConfigDict()
     data.dataset = 'MTG'
     data.genres = "classical"  # set to None for all
-    data.num_workers = 4
+    data.num_workers = 6
     data.n_fft = 512
     data.hop_length = 256
     data.duration = 6

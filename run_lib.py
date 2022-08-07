@@ -131,7 +131,10 @@ def train(config, workdir):
 
   for step in range(initial_step, num_train_steps + 1):
     # Convert data to JAX arrays and normalize them. Use ._numpy() to avoid copy.
-    batch = torch.from_numpy(next(train_iter)['image']._numpy()).to(config.device).float()
+    if config.data.dataset == "MTG":
+      batch = next(train_iter)["track"].to(config.device).float()
+    else:
+      batch = torch.from_numpy(next(train_iter)['image']._numpy()).to(config.device).float()
     batch = batch.permute(0, 3, 1, 2)
     batch = scaler(batch)
     # Execute one training step
@@ -146,7 +149,10 @@ def train(config, workdir):
 
     # Report the loss on an evaluation dataset periodically
     if step % config.training.eval_freq == 0:
-      eval_batch = torch.from_numpy(next(eval_iter)['image']._numpy()).to(config.device).float()
+      if config.data.dataset == "MTG":
+        eval_batch = next(eval_iter)["track"].to(config.device).float()
+      else:
+        eval_batch = torch.from_numpy(next(eval_iter)['image']._numpy()).to(config.device).float()
       eval_batch = eval_batch.permute(0, 3, 1, 2)
       eval_batch = scaler(eval_batch)
       eval_loss = eval_step_fn(state, eval_batch)
