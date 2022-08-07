@@ -45,7 +45,6 @@ def load_normalizers(path=Path(__file__).parent / "audio_normalizers.pickel"):
 
 def _load_tracks(track_file: Path, genres: Union[str, List[str], None]) -> pd.DataFrame:
     df = pd.read_csv(track_file, sep="\t")
-    df = df[df.chunk_nr == 0]
     print("Loaded {} tracks".format(len(df)))
     df.genres = df.genres.apply(lambda x: eval(x))
     if genres:

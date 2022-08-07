@@ -22,14 +22,14 @@ import os
 import time
 
 import numpy as np
-import soundfile
 import tensorflow as tf
 import tensorflow_gan as tfgan
 import logging
 # Keep the import below for registering all model definitions
+import torchaudio
 from einops import rearrange
 
-from audio.util import load_normalizers, invert_normalization, invert_spectrogram
+from audio.mtg import InverseSamples
 from models import ddpm, ncsnv2, ncsnpp
 import losses
 import sampling
@@ -169,18 +169,15 @@ def train(config, workdir):
         tf.io.gfile.makedirs(this_sample_dir)
 
         if config.data.dataset == "MTG":
-            normalizers = load_normalizers(config.data.normalizers_path)
-            sample = invert_normalization(sample, normalizers=normalizers)
-            sample = invert_spectrogram(sample,
-                                        n_fft=config.data.n_fft,
-                                        hop_length=config.data.hop_length)
-            sample = rearrange(sample, "b t -> (b t)")
+            inverse_transformation = InverseSamples(config)
+            audio_wave = inverse_transformation(sample)
+            audio_wave = rearrange(audio_wave, "b t -> (b t)").cpu().numpy()
             with tf.io.gfile.GFile(os.path.join(this_sample_dir, "sample.np"), "wb") as fout:
-                np.save(fout, sample)
+                np.save(fout, audio_wave)
 
             with tf.io.gfile.GFile(
                     os.path.join(this_sample_dir, "sample.wav"), "wb") as fout:
-                soundfile.write(fout, sample, samplerate=config.data.sampling_rate)
+                torchaudio.save(fout, audio_wave, sr=config.data.sampling_rate)
 
         else:
             nrow = int(np.sqrt(sample.shape[0]))
