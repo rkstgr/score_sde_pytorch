@@ -44,9 +44,8 @@ def get_default_configs():
     # data
     config.data = data = ml_collections.ConfigDict()
     data.dataset = 'MTG'
-    data.genre = "classical"  # set to None for all
-    data.normalizers_path = "audio/audio_normalizers.pickel"
-    data.num_proc = 4
+    data.genres = "classical"  # set to None for all
+    data.num_workers = 4
     data.n_fft = 512
     data.hop_length = 256
     data.duration = 6

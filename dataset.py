@@ -19,7 +19,6 @@ import os
 from functools import partial
 from pathlib import Path
 
-import datasets
 import tensorflow as tf
 import tensorflow_datasets as tfds
 import torch
@@ -152,28 +151,21 @@ def get_dataset(config, uniform_dequantization=False, evaluation=False):
 
     elif config.data.dataset == "MTG":
 
-        normalizers = load_normalizers(Path(__file__).parent.joinpath(config.data.normalizers_path))
+        def preprocess(ds):
+            return torch.utils.data.DataLoader(
+                ds,
+                batch_size=batch_size,
+                shuffle=True,
+                num_workers=config.data.num_workers,
+                drop_last=True,
+            )
 
-        def prepare_dataset(ds: tf.data.Dataset):
-            ds = ds.repeat(count=num_epochs)
-            ds = ds.shuffle(100)
-            ds = ds.batch(batch_size, drop_remainder=True)
-            return ds.prefetch(prefetch_size)
+        train_ds = get_mtg_dataset("train", config)
+        valid_ds = get_mtg_dataset("valid", config)
 
-        mtg_dataset = partial(get_mtg_dataset,
-                              path=Path(os.environ.get("MTG_DATASET_PATH")),
-                              genre=config.data.get("genre", None),
-                              sampling_rate=config.data.sampling_rate,
-                              duration=config.data.duration,
-                              n_fft=config.data.n_fft,
-                              hop_length=config.data.hop_length,
-                              normalizers=normalizers
-                              )
-        print("Loading MTG dataset")
-        train_ds = prepare_dataset(mtg_dataset(split="train"))
-        valid_ds = prepare_dataset(mtg_dataset(split="valid"))
-
-        return train_ds, valid_ds, None
+        train_dl = preprocess(train_ds)
+        valid_dl = preprocess(valid_ds)
+        return train_dl, valid_dl, None
 
     else:
         raise NotImplementedError(
