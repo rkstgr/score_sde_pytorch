@@ -20,6 +20,7 @@ import gc
 import io
 import os
 import time
+from itertools import cycle
 
 import numpy as np
 import tensorflow as tf
@@ -83,8 +84,9 @@ def train(config, workdir):
   # Build data iterators
   train_ds, eval_ds, _ = dataset.get_dataset(config,
                                              uniform_dequantization=config.data.uniform_dequantization)
-  train_iter = iter(train_ds)  # pytype: disable=wrong-arg-types
-  eval_iter = iter(eval_ds)  # pytype: disable=wrong-arg-types
+
+  train_iter = cycle(iter(train_ds))  # pytype: disable=wrong-arg-types
+  eval_iter = cycle(iter(eval_ds))  # pytype: disable=wrong-arg-types
   # Create data normalizer and its inverse
   scaler = dataset.get_data_scaler(config)
   inverse_scaler = dataset.get_data_inverse_scaler(config)
