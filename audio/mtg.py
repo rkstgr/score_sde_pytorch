@@ -184,7 +184,9 @@ class ComplexToFeatures(torch.nn.Module):
         x_angle = (torch.angle(x) + torch.pi) / (2 * torch.pi)  # normalized to [0, 1]
         db = self.magnitude_to_db(magnitude)
         db_norm = self.sigmoid(db)
-        return torch.stack([db_norm, x_angle], dim=-1)
+        feat = torch.stack([db_norm, x_angle], dim=-1)
+        # remove the last dimension (freq)
+        return feat[:-1, :, :]
 
 
 class FeaturesToComplex(torch.nn.Module):
@@ -203,6 +205,8 @@ class FeaturesToComplex(torch.nn.Module):
         return self.ref * torch.pow(10.0, 0.1 * db)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # add zeros to the first dimension (freq)
+        x = torch.cat([x, torch.zeros(1, x.shape[1], x.shape[2])], dim=0)
         db_norm = x[:, :, 0]
         x_angle_norm = x[:, :, 1] - 0.5
         angle = 2 * torch.pi * x_angle_norm
