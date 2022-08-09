@@ -146,7 +146,12 @@ class InverseSamples(torch.nn.Module):
     def __init__(self, config):
         super().__init__()
         self.transformation = nn.Sequential(
-            InverseNormalizeRealImag(load_normalizers()),
+            FeaturesToComplex(
+                ref=config.data.transforms.ref,
+                amin=config.data.transforms.amin,
+                top_db=config.data.transforms.top_db,
+                sigmoid_temp=config.data.transforms.sigmoid_temp,
+            ),
             InverseSpectrogram(n_fft=config.data.n_fft,
                                win_length=config.data.n_fft,
                                hop_length=config.data.hop_length)
@@ -157,13 +162,13 @@ class InverseSamples(torch.nn.Module):
 
 
 class ComplexToFeatures(torch.nn.Module):
-    def __init__(self, config):
+    def __init__(self, ref=1.0, amin=1e-05, top_db=80.0, sigmoid_temp=15.0):
         super().__init__()
         # ref = 1.0, amin = 1e-05, top_db = 80.0
-        self.ref = torch.as_tensor(config.data.get("ref", 1.0))
-        self.amin = torch.as_tensor(config.data.get("amin", 1e-05))
-        self.top_db = torch.as_tensor(config.data.get("top_db", 80.0))
-        self.sigmoid_temp = config.data.get("sigmoid_temp", 15.0)
+        self.ref = torch.as_tensor(ref)
+        self.amin = torch.as_tensor(amin)
+        self.top_db = torch.as_tensor(top_db)
+        self.sigmoid_temp = sigmoid_temp
 
     def magnitude_to_db(self, magnitude):
         log_spec = 10.0 * torch.log10(torch.maximum(self.amin, magnitude ** 2))
@@ -183,13 +188,13 @@ class ComplexToFeatures(torch.nn.Module):
 
 
 class FeaturesToComplex(torch.nn.Module):
-    def __init__(self, config):
+    def __init__(self, ref=1.0, amin=1e-05, top_db=80.0, sigmoid_temp=15.0):
         super().__init__()
         # ref = 1.0, amin = 1e-05, top_db = 80.0
-        self.ref = torch.as_tensor(config.data.get("ref", 1.0))
-        self.amin = torch.as_tensor(config.data.get("amin", 1e-05))
-        self.top_db = torch.as_tensor(config.data.get("top_db", 80.0))
-        self.sigmoid_temp = config.data.get("sigmoid_temp", 15.0)
+        self.ref = torch.as_tensor(ref)
+        self.amin = torch.as_tensor(amin)
+        self.top_db = torch.as_tensor(top_db)
+        self.sigmoid_temp = sigmoid_temp
 
     def sigmoid_inverse(self, db_norm):
         return torch.log(db_norm / (1 - db_norm)) * self.sigmoid_temp
@@ -220,7 +225,13 @@ def get_mtg_dataset(split, config):
                 win_length=config.data.n_fft,
                 hop_length=config.data.hop_length,
                 power=None,
-            )
+            ),
+            ComplexToFeatures(
+                ref=config.data.transforms.ref,
+                amin=config.data.transforms.amin,
+                top_db=config.data.transforms.top_db,
+                sigmoid_temp=config.data.transforms.sigmoid_temp,
+            ),
         ))
 
 

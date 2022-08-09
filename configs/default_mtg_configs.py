@@ -54,6 +54,11 @@ def get_default_configs():
     data.image_size = 256
     data.num_channels = 2
     data.time_bins = int(math.ceil(data.duration*data.sampling_rate/data.hop_length))
+    data.transforms = transforms = ml_collections.ConfigDict()
+    transforms.ref = 1.0
+    transforms.amin = 1e-05
+    transforms.top_db = 80.0
+    transforms.sigmoid_temp = 15.0
 
     # model
     config.model = model = ml_collections.ConfigDict()
