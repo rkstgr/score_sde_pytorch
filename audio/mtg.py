@@ -89,7 +89,7 @@ class MtgOpusDataset(Dataset):
         _id = self.tracks.iloc[idx, 0]
         track_path = self.opus_dir / f"{_id}.opus"
         track_orig, sample_rate = torchaudio.load(track_path,
-                                                  num_frames=int((self.duration + 5) * 48000))
+                                                  num_frames=int((self.duration + 10) * 48000))
         track_orig = torch.mean(track_orig, dim=0)  # stereo to mono
         track = T.resample(track_orig, orig_freq=sample_rate, new_freq=self.sampling_rate)
 
@@ -97,6 +97,7 @@ class MtgOpusDataset(Dataset):
             nonzero = torch.nonzero(torch.abs(track) > 0.01)
             if torch.numel(nonzero) > 0:
                 nonzero_index = nonzero[0][0]
+                nonzero_index = min(nonzero_index, len(track) - int(self.duration * self.sampling_rate))
                 track = track[nonzero_index:nonzero_index + int(self.duration * self.sampling_rate)]
 
         genres = self.tracks.iloc[idx, 1]
