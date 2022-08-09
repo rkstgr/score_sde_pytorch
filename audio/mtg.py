@@ -187,7 +187,12 @@ class ComplexToFeatures(torch.nn.Module):
         db_norm = self.sigmoid(db)
         feat = torch.stack([db_norm, x_angle], dim=-1)
         # remove the last dimension (freq)
-        return feat[:-1, :, :]
+        if feat.dim() == 3:
+            return feat[:-1, :, :]
+        elif feat.dim() == 4:
+            return feat[:, :-1, :, :]
+        else:
+            raise ValueError(f"Expected 3 or 4 dimensions, got {feat.dim()}")
 
 
 class FeaturesToComplex(torch.nn.Module):
@@ -207,7 +212,12 @@ class FeaturesToComplex(torch.nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         # add zeros to the first dimension (freq)
-        x = torch.cat([x, torch.zeros(1, x.shape[1], x.shape[2])], dim=0)
+        if x.dim() == 3:
+            x = torch.cat([x, torch.zeros(1, x.shape[1], x.shape[2])], dim=0)
+        elif x.dim() == 4:
+            x = torch.cat([x, torch.zeros(x.shape[0], 1, x.shape[2], x.shape[3])], dim=1)
+        else:
+            raise ValueError(f"Expected 3 or 4 dimensions, got {x.dim()}")
         db_norm = x[:, :, 0]
         x_angle_norm = x[:, :, 1] - 0.5
         angle = 2 * torch.pi * x_angle_norm
