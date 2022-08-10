@@ -99,6 +99,11 @@ class MtgOpusDataset(Dataset):
                 nonzero_index = nonzero[0][0]
                 nonzero_index = min(nonzero_index, len(track) - int(self.duration * self.sampling_rate))
                 track = track[nonzero_index:nonzero_index + int(self.duration * self.sampling_rate)]
+        
+        if len(track) != int(self.duration * self.sampling_rate):
+            print(f"track {_id} was not of suitable length")
+            track = T.resample(track_orig, orig_freq=sample_rate, new_freq=self.sampling_rate)
+            track = track[:int(self.duration * self.sampling_rate)]
 
         genres = self.tracks.iloc[idx, 1]
         label = genres[0] if len(genres) > 0 else "nothing"
@@ -214,12 +219,15 @@ class FeaturesToComplex(torch.nn.Module):
         # add zeros to the first dimension (freq)
         if x.dim() == 3:
             x = torch.cat([x, torch.zeros(1, x.shape[1], x.shape[2])], dim=0)
+            db_norm = x[:, :, 0]
+            x_angle_norm = x[:, :, 1] - 0.5
         elif x.dim() == 4:
             x = torch.cat([x, torch.zeros(x.shape[0], 1, x.shape[2], x.shape[3])], dim=1)
+            db_norm = x[:, :, :, 0]
+            x_angle_norm = x[:, :, :, 1] - 0.5
         else:
             raise ValueError(f"Expected 3 or 4 dimensions, got {x.dim()}")
-        db_norm = x[:, :, 0]
-        x_angle_norm = x[:, :, 1] - 0.5
+        
         angle = 2 * torch.pi * x_angle_norm
         db = self.sigmoid_inverse(db_norm)
         S = self.db_to_magnitude(db)
@@ -234,6 +242,7 @@ def get_mtg_dataset(split, config):
         genres=config.data.genres,
         sampling_rate=config.data.sampling_rate,
         duration=config.data.duration,
+        remove_silence=True,
         transform=nn.Sequential(
             torchaudio.transforms.Spectrogram(
                 n_fft=config.data.n_fft,
